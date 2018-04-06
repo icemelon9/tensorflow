@@ -8,5 +8,5 @@ libdir=${exec_prefix}/lib
 Name: TensorFlow
 Description: TensorFlow C++ Library
 Version: @TENSORFLOW_VERSION@
-Cflags: -I${includedir}/tensorflow -I${includedir}/tensorflow/tensorflow/contrib/makefile/downloads -I${includedir}/tensorflow/tensorflow/contrib/makefile/downloads/eigen -I${includedir}/tensorflow/tensorflow/contrib/makefile/downloads/gemmlowp
+Cflags: -I${includedir}/tensorflow -I${includedir}/tensorflow/tensorflow/contrib/makefile/downloads -I${includedir}/tensorflow/tensorflow/contrib/makefile/downloads/eigen -I${includedir}/tensorflow/tensorflow/contrib/makefile/downloads/gemmlowp -I${includedir}/tensorflow/tensorflow/contrib/makefile/downloads/nsync/public
 Libs: -L${libdir}/tensorflow -rdynamic -ltensorflow_cc -ldl -lpthread -Wl,-rpath,${libdir}/tensorflow
