@@ -11,6 +11,7 @@ project(
 set(TENSORFLOW_VERSION "1.7" CACHE STRING "TensorFlow version")
 set(CUDA_PATH "/usr/local/cuda" CACHE PATH "CUDA install path")
 set(CUDNN_PATH "/usr/local/cuda" CACHE PATH "CUDNN install path")
+option(SYSTEM_PROTOBUF "Use system protobuf instead of static protobuf from contrib/makefile." ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib")
@@ -18,6 +19,10 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib")
 include(CMakePackageConfigHelpers)
 set(CMAKECFG_INSTALL_DIR lib/cmake/TensorflowCC)
 set(PKGCONFIG_INSTALL_DIR lib/pkgconfig)
+
+if(SYSTEM_PROTOBUF)
+  find_package(Protobuf REQUIRED)
+endif()
 
 # --------------------------------------------------------
 # Include External Projects for Shared Tensorflow
@@ -50,10 +55,28 @@ target_include_directories(
 target_link_libraries(
   tensorflow_cc_shared INTERFACE
   "${CMAKE_INSTALL_PREFIX}/lib/tensorflow/libtensorflow_cc.so"
-  # static protobuf is used from the contrib/makefile
-  #"${CMAKE_INSTALL_PREFIX}/lib/tensorflow/libprotobuf.a"
   dl pthread
 )
+if(SYSTEM_PROTOBUF)
+  target_include_directories(
+    tensorflow_cc_shared INTERFACE
+    "${Protobuf_INCLUDE_DIRS}"
+  )
+  target_link_libraries(
+    tensorflow_cc_shared INTERFACE
+    "${Protobuf_LIBRARIES}"
+  )
+else()
+  target_include_directories(
+    tensorflow_cc_shared INTERFACE
+    "${CMAKE_INSTALL_PREFIX}/include/tensorflow/tensorflow/contrib/makefile/gen/protobuf-host/include"
+  )
+  target_link_libraries(
+    tensorflow_cc_shared INTERFACE
+    "${CMAKE_INSTALL_PREFIX}/lib/tensorflow_cc/libprotobuf.a"
+  )
+endif()
+
 
 # ----------------------------------------
 # Configure CMake Config and Version Files
@@ -92,10 +115,24 @@ install(
   DESTINATION include/tensorflow
   FILES_MATCHING PATTERN "*.h"
 )
-# install all files downloaded by contrib/makefile as dependencies
+# install all header files downloaded by contrib/makefile
+# (Note that we cannot simply include all *.h or *.hpp files, since e.g., eigen
+# does not use file extensions for header files.)
 install(
   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tensorflow/contrib/makefile/downloads/"
   DESTINATION include/tensorflow/tensorflow/contrib/makefile/downloads
+  FILES_MATCHING PATTERN "*"
+  PATTERN "Makefile*"  EXCLUDE
+  PATTERN "*unittest*" EXCLUDE
+  PATTERN "*.o"        EXCLUDE
+  PATTERN "*.so"       EXCLUDE
+  PATTERN "*.so.*"     EXCLUDE
+  PATTERN "*.a"        EXCLUDE
+  PATTERN "*.tbz"      EXCLUDE
+  PATTERN "*.tgz"      EXCLUDE
+  PATTERN "*.tar"      EXCLUDE
+  PATTERN "*.tar.*"    EXCLUDE
+  PATTERN "*.zip"      EXCLUDE
 )
 # install all files from third_party folder (e.g., Eigen/Tensor)
 install(
@@ -103,10 +140,12 @@ install(
   DESTINATION include/tensorflow/third_party
 )
 # install static libprotobuf from contrib/makefile
-# install(
-#   FILES "${CMAKE_CURRENT_SOURCE_DIR}/tensorflow/contrib/makefile/gen/protobuf-host/lib/libprotobuf.a"
-#   DESTINATION lib/tensorflow_cc
-# )
+if (NOT SYSTEM_PROTOBUF)
+  install(
+    FILES "${CMAKE_CURRENT_SOURCE_DIR}/tensorflow/contrib/makefile/gen/protobuf-host/lib/libprotobuf.a"
+    DESTINATION lib/tensorflow_cc
+  )
+endif()
 # shared library specific
 install(
   FILES "${CMAKE_CURRENT_SOURCE_DIR}/bazel-bin/tensorflow/libtensorflow_cc.so"
